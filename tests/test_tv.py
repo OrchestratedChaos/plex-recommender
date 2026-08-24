@@ -1520,6 +1520,40 @@ class TestGetPlexWatchedShowsData:
 
         mock_merge.assert_called_once()
 
+    @patch("os.path.exists", return_value=False)
+    @patch("recommenders.tv.apply_watch_credits")
+    @patch("recommenders.tv.fetch_plex_watch_history_shows")
+    @patch("recommenders.tv.get_plex_account_ids")
+    @patch("recommenders.tv.get_watched_show_count", return_value=1)
+    def test_curacast_exclusion_mutation_reaches_self_watched_ids(
+        self, mock_count, mock_account_ids, mock_history, mock_apply_credits, mock_exists
+    ):
+        """TV mirror of test_movie.py's identically-named test: self.
+        watched_ids.update(watched_ids) (a value copy) runs BEFORE
+        apply_watch_credits() is called, so apply_watch_credits() must be
+        handed self.watched_ids itself - not the local `watched_ids`
+        variable - for its exclusion mutation to reach anything downstream
+        actually consults."""
+        mock_account_ids.return_value = ["acct1"]
+        mock_history.return_value = (set(), {})  # no real Plex history at all
+
+        curacast_excluded_show_id = 888  # the SHOW id an episode credit resolves to
+
+        def _fake_apply_watch_credits(*args, **kwargs):
+            kwargs["watched_ids"].add(curacast_excluded_show_id)
+            return 1
+
+        mock_apply_credits.side_effect = _fake_apply_watch_credits
+
+        config = copy.deepcopy(TV_TEST_CONFIG)
+        config["curacast"] = {"enabled": True, "url": "http://x", "api_key": "k"}
+        config["negative_signals"] = {"dropped_shows": {"enabled": False}}
+        recommender = _make_tv_recommender(config=config, show_cache_data={})
+
+        mock_apply_credits.assert_called_once()
+        assert mock_apply_credits.call_args.kwargs["watched_ids"] is recommender.watched_ids
+        assert curacast_excluded_show_id in recommender.watched_ids
+
 
 class TestGetPlexWatchedShowsDataAccurateMode:
     """Tests for the profile_accuracy.enabled path (#273) in

@@ -230,7 +230,7 @@ output exactly as it already is in the human-readable one.
 The web UI exposes Prometheus text-format metrics at `/metrics`:
 recommender run count/duration by engine and outcome, outbound API request
 count/latency/error count by service (Plex, Sonarr, Radarr, TMDB, Trakt,
-Simkl, MDBList, Tautulli), local cache hit/miss, self-update attempts/
+Simkl, MDBList, Tautulli, Curacast), local cache hit/miss, self-update attempts/
 failures, unhandled error count, and a `curatarr_build_info` gauge carrying
 the running version. Rendered directly from a small local state file - no
 new runtime dependency, and scraping never makes a network call or triggers
@@ -331,6 +331,7 @@ For Docker or CI environments, you can use environment variables instead of stor
 | `PLEX_TOKEN` | `plex.token` |
 | `TMDB_API_KEY` | `tmdb.api_key` |
 | `TAUTULLI_API_KEY` | `tautulli.api_key` |
+| `CURACAST_API_KEY` | `curacast.api_key` |
 | `SONARR_API_KEY` | `sonarr.api_key` |
 | `RADARR_API_KEY` | `radarr.api_key` |
 | `TRAKT_CLIENT_SECRET` | `trakt.client_secret` |
@@ -434,6 +435,39 @@ Users are matched to Plex accounts by email (falls back to username).
 Disabled by default; if Tautulli is unreachable or a user can't be matched,
 Curatarr silently falls back to Plex-only history.
 
+### Curacast Integration (Optional)
+
+curacast (a sibling product) plays a Plex library back through simulated live TV channels and
+marks watched items via Plex's own `/:/scrobble` endpoint - that bumps
+`viewCount` but never creates a `/status/sessions/history/all` row, so
+live-TV viewing is otherwise invisible to Curatarr's watch-history-based
+profile. This pulls curacast's own graded watch-credit feed instead,
+weighted by tier (`sampled`/`tasted`/`partial`/`substantial`/`complete`)
+and recency, the same way Plex/Tautulli history is - but never a star
+rating or rewatch multiplier, since a live-TV credit carries neither. A
+credit at or above `exclude_at_weight` (default 0.8 - "substantial", i.e.
+70%+ of the program seen, the completion bar Netflix used for its own
+"viewer" definition before 2019) also marks that item as watched for
+recommendation exclusion, exactly like real Plex/Tautulli history does -
+so a movie or show binged on live TV stops being recommended back. A
+credit below that (`partial`/`tasted`/`sampled`) never excludes; they
+bailed early and the item stays recommendable.
+
+```yaml
+# In config/config.yml
+curacast:
+  enabled: true
+  url: http://localhost:8000
+  api_key: YOUR_CURACAST_API_KEY
+  min_weight: 0.4          # Ignore credits below this weight (0.4 = "partial" and up)
+  exclude_at_weight: 0.8   # Credits at/above this weight also count as "already watched" for recommendation exclusion
+  username: ""             # Optional: restrict to one curacast viewer; blank = the configured Plex user
+```
+
+Disabled by default; if curacast is unreachable, misconfigured, or a credit's
+`program_key` no longer resolves in the Plex library, Curatarr silently
+falls back to Plex-only history for that item/run.
+
 ### General Settings
 ```yaml
 general:
@@ -449,7 +483,7 @@ logging:
 `logging.verbosity` controls how much gets logged: `quiet` (default) -
 run start/completion/failure per engine and user, scheduled-run
 confirmations, unhandled errors, and any external API (Plex/TMDB/
-Tautulli/Sonarr/Radarr/Trakt/Simkl/MDBList) failure; `verbose` - all of
+Tautulli/Curacast/Sonarr/Radarr/Trakt/Simkl/MDBList) failure; `verbose` - all of
 that plus per-item filtering decisions, discovery iterations, and cache
 hits; `off` - errors only. Also overridable via the `CURATARR_LOG_LEVEL`
 environment variable for a one-off troubleshooting run. An explicit

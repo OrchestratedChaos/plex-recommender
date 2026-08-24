@@ -39,6 +39,7 @@ from utils import (
     RESET,
     TOP_CAST_COUNT,
     YELLOW,
+    apply_watch_credits,
     build_profile_from_counters,
     calculate_recency_multiplier,
     calculate_rewatch_multiplier,
@@ -499,6 +500,37 @@ class PlexTVRecommender(BaseRecommender):
 
         # Store production companies for franchise/spinoff bonus during scoring
         counters["production_companies"] = production_companies
+
+        # Optionally fold in curacast watch credits (live-TV viewing,
+        # invisible to Plex's own /status/sessions/history/all - see
+        # utils/curacast.py's module docstring). Runs AFTER watched_ids is
+        # fully finalized (Plex + Tautulli merged, above) so its dedup
+        # check sees the complete picture. Falls back to Plex-only
+        # behavior (no-ops) if disabled, unreachable, or misconfigured.
+        #
+        # Passes self.watched_ids, NOT the local `watched_ids` above -
+        # self.watched_ids.update(watched_ids) already ran (right after
+        # history/Tautulli merged in), so they're two separate set objects
+        # from this point on. apply_watch_credits() can mark a
+        # high-confidence credit's SHOW as "watched" for exclusion purposes
+        # (same show-level granularity fetch_plex_watch_history_shows()
+        # already uses for episode history - see its own docstring), and
+        # self.watched_ids is the one get_recommendations() actually
+        # consults and _save_watched_cache() persists - mutating the local
+        # copy here would be silently inert.
+        if self.config.get("curacast", {}).get("enabled", False):
+            credits_applied = apply_watch_credits(
+                self.config,
+                counters,
+                media_type="tv",
+                watched_ids=self.watched_ids,
+                media_info_cache=self.show_cache.cache["shows"],
+                plex=self.plex,
+                cache_dir=self.cache_dir,
+                plex_username=self.single_user,
+            )
+            if credits_applied:
+                logger.info(f"Curacast: applied {credits_applied} watch credit(s) to TV profile")
 
         return counters
 
