@@ -144,6 +144,15 @@ from .counters import (
     process_counters_from_cache,
 )
 
+# Curacast utilities
+from .curacast import (
+    CuracastAPIError,
+    CuracastClient,
+    apply_watch_credits,
+    create_curacast_client,
+    get_watch_credits,
+)
+
 # Display utilities
 from .display import (
     ANSI_PATTERN,
@@ -685,6 +694,12 @@ __all__ = [
     "build_profile_from_counters",
     "create_empty_counters",
     "process_counters_from_cache",
+    # Curacast
+    "CuracastAPIError",
+    "CuracastClient",
+    "apply_watch_credits",
+    "create_curacast_client",
+    "get_watch_credits",
     # Helpers
     "TITLE_SUFFIXES_TO_STRIP",
     "get_code_root",

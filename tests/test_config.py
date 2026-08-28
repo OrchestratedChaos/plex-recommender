@@ -974,6 +974,7 @@ class TestLoadConfig:
             "SIMKL_ACCESS_TOKEN": ("simkl", "access_token"),
             "MDBLIST_API_KEY": ("mdblist", "api_key"),
             "TAUTULLI_API_KEY": ("tautulli", "api_key"),
+            "CURACAST_API_KEY": ("curacast", "api_key"),
         }
         try:
             for env_var in env_vars:
@@ -1035,7 +1036,7 @@ class TestGetEnvOverride:
         """Belt-and-braces: fails loudly if a future ENV_VAR_OVERRIDES
         edit forgets one of the sections #289 was actually about."""
         sections = {section for _env_var, section, _key in ENV_VAR_OVERRIDES}
-        assert sections == {"plex", "tmdb", "tautulli", "sonarr", "radarr", "trakt", "simkl", "mdblist"}
+        assert sections == {"plex", "tmdb", "tautulli", "curacast", "sonarr", "radarr", "trakt", "simkl", "mdblist"}
 
 
 class TestModularConfigLoading:

@@ -193,6 +193,25 @@ tautulli:
   api_key: YOUR_TAUTULLI_API_KEY  # Settings -> Web Interface -> API Key
   # Or set TAUTULLI_API_KEY in the environment (takes precedence, #289)
 
+# Optional: curacast live-TV watch-credit integration
+# curacast (a sibling product) plays a Plex library back through simulated
+# TV channels and marks watched items via Plex's own /:/scrobble endpoint -
+# that bumps viewCount but never creates a /status/sessions/history/all
+# row, so live-TV viewing is otherwise invisible to Curatarr's profile.
+# Supplements the profile with curacast's own graded watch-credit feed,
+# weighted by tier (sampled/tasted/partial/substantial/complete) and
+# recency, the same way Plex/Tautulli history is. Disabled by default; if
+# unreachable or misconfigured, Curatarr silently falls back to Plex-only
+# history.
+curacast:
+  enabled: false          # Optional: pull live-TV watch credits from a curacast server
+  url: ""                 # e.g. http://localhost:8000
+  api_key: ""
+  # Or set CURACAST_API_KEY in the environment (takes precedence, #289)
+  min_weight: 0.4          # Ignore credits below this weight (0.4 = "partial" and up)
+  exclude_at_weight: 0.8   # Credits at/above this weight also count as "already watched" for recommendation exclusion (0.8 = "substantial", i.e. >=70% of the program seen)
+  username: ""             # Optional: restrict to one curacast viewer; blank = the configured Plex user
+
 # =============================================================================
 # OPTIONAL MODULE FILES (in this directory)
 # =============================================================================

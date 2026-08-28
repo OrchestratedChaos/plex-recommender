@@ -30,7 +30,7 @@ import yaml
 from .display import log_error, log_info, log_warning
 
 # Project version - single source of truth
-__version__ = "2.22.0"
+__version__ = "2.23.0"
 
 # Cache version - bump this when cache format changes to auto-invalidate old caches
 CACHE_VERSION = 9  # v9: new cache FIELD - `content_rating` per item
@@ -594,6 +594,7 @@ ENV_VAR_OVERRIDES = [
     ("PLEX_TOKEN", "plex", "token"),
     ("TMDB_API_KEY", "tmdb", "api_key"),
     ("TAUTULLI_API_KEY", "tautulli", "api_key"),
+    ("CURACAST_API_KEY", "curacast", "api_key"),
     ("SONARR_API_KEY", "sonarr", "api_key"),
     ("RADARR_API_KEY", "radarr", "api_key"),
     ("TRAKT_CLIENT_SECRET", "trakt", "client_secret"),
@@ -661,6 +662,7 @@ KNOWN_ROOT_CONFIG_KEYS = frozenset(
         "schedule",
         "huntarr",
         "tautulli",
+        "curacast",
         "libraries",
         "cache_dir",
         # Read by recommenders/external.py as the global service list

@@ -1353,6 +1353,48 @@ class TestGetPlexWatchedDataMovie:
 
         mock_merge.assert_called_once()
 
+    @patch("os.path.exists", return_value=False)
+    @patch("recommenders.movie.apply_watch_credits")
+    @patch("recommenders.movie.fetch_plex_watch_history_movies")
+    @patch("recommenders.movie.get_plex_account_ids")
+    @patch("recommenders.movie.get_watched_movie_count", return_value=1)
+    def test_curacast_exclusion_mutation_reaches_self_watched_ids(
+        self, mock_count, mock_account_ids, mock_history, mock_apply_credits, mock_exists
+    ):
+        """Regression test for the self.watched_ids-vs-local-watched_ids
+        aliasing bug: self.watched_ids.update(watched_ids) (a value copy,
+        not an alias) runs BEFORE apply_watch_credits() is ever called, so
+        apply_watch_credits() must be handed self.watched_ids itself - not
+        the local `watched_ids` variable - or a mutation it makes for
+        recommendation-exclusion purposes would land on a set nothing
+        downstream (get_recommendations()'s exclusion checks,
+        _save_watched_cache()) ever reads again."""
+        mock_account_ids.return_value = ["acct1"]
+        mock_history.return_value = ([], {})  # no real Plex history at all
+
+        curacast_excluded_id = 777
+
+        def _fake_apply_watch_credits(*args, **kwargs):
+            # Simulate exactly what the real apply_watch_credits() does for
+            # a substantial-or-better credit: mutate the passed-in set.
+            kwargs["watched_ids"].add(curacast_excluded_id)
+            return 1
+
+        mock_apply_credits.side_effect = _fake_apply_watch_credits
+
+        config = copy.deepcopy(MOVIE_TEST_CONFIG)
+        config["curacast"] = {"enabled": True, "url": "http://x", "api_key": "k"}
+        recommender = _make_movie_recommender(config=config, movie_cache_data={})
+
+        mock_apply_credits.assert_called_once()
+        # It must have been handed the recommender's OWN watched_ids
+        # attribute (same object, not a copy)...
+        assert mock_apply_credits.call_args.kwargs["watched_ids"] is recommender.watched_ids
+        # ...so the mutation it made is visible here, on the attribute
+        # get_recommendations()'s exclusion logic and _save_watched_cache()
+        # actually consult.
+        assert curacast_excluded_id in recommender.watched_ids
+
 
 class TestGetPlexWatchedDataMovieAccurateMode:
     """Tests for the profile_accuracy.enabled path (#273) in
