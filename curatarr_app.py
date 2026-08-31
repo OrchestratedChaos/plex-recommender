@@ -268,7 +268,6 @@ def _run_one_recommender(engine: str, rest: list) -> None:
     else:
         print(f"curatarr: unknown recommender engine: {engine}", file=sys.stderr)
         sys.exit(2)
-        return
     run()
 
 
